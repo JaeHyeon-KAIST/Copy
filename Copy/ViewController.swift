@@ -21,30 +21,34 @@ class ViewController: UIViewController,WKUIDelegate,WKNavigationDelegate,CLLocat
         URL(string: "https://semos.kr/my_page"),
     ]
     
-    @objc func updateTime(){
+    @objc func checkUrl(){
         self.webView?.allowsBackForwardNavigationGestures = tuple.contains(webView.url!) ? false : true
+        // if it is one of the main page, do not allow backward gesture
         let temp = webView.url?.absoluteString
         if (temp!.contains("payment"))
         {
+            // if it is payment site, open it with SVC due to kakaopay
             let tmp = webView.url!
             webView.goBack()
+//            webView.load(URLRequest(url: URL(string: "https://semos.kr/")!))
             let safariViewController = SFSafariViewController(url: tmp)
             safariViewController.delegate = self
             safariViewController.modalPresentationStyle = .automatic
+            // to make SVC pop-up
             self.present(safariViewController, animated: true, completion: nil)
         }
+        
     }
     
     
     func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
-        webView.load(URLRequest(url: URL(string: "https://semos.kr")!))
+        webView.load(URLRequest(url: URL(string: "https://semos.kr/")!))
     }
     
+    // if there is a gesture at main page, change view
     @objc func respondToSwipeGesture(_ gesture: UIGestureRecognizer) {
-        // 만일 제스쳐가 있다면
         if (tuple.contains(webView.url!)){
             if let swipeGesture = gesture as? UISwipeGestureRecognizer{
-            // 발생한 이벤트가 각 방향의 스와이프 이벤트라면 해당 이미지 뷰를 빨간색 화살표 이미지로 변경
                 switch swipeGesture.direction {
                     case UISwipeGestureRecognizer.Direction.left :
                         let index = tuple.firstIndex(of: webView.url!)!
@@ -65,12 +69,15 @@ class ViewController: UIViewController,WKUIDelegate,WKNavigationDelegate,CLLocat
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
         locationManager = CLLocationManager()
         locationManager.delegate = self
-        webView.uiDelegate = self
+        self.webView.uiDelegate = self
         
         HTTPCookieStorage.shared.cookieAcceptPolicy = HTTPCookie.AcceptPolicy.always
+        
+        webView.addObserver(self, forKeyPath: "URL", options: .new, context: nil)
+
+        
         
 //        webView.evaluateJavaScript("navigator.userAgent"){(result, error) in
 //            let originUserAgent = result as! String
@@ -80,21 +87,18 @@ class ViewController: UIViewController,WKUIDelegate,WKNavigationDelegate,CLLocat
 
         locationManager.requestWhenInUseAuthorization()
         let request = URLRequest(url: URL(string: "https://semos.kr")!)
-//        let request = URLRequest(url: URL(string: "https://naver.com")!)
 
         WKWebpagePreferences().allowsContentJavaScript = true
-        webView.load(request)
-        
-        Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(ViewController.updateTime), userInfo: nil, repeats: true)
+        self.webView.load(request)
         
         let swipeLeft = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.respondToSwipeGesture(_:)))
         swipeLeft.direction = UISwipeGestureRecognizer.Direction.left
         self.view.addGestureRecognizer(swipeLeft)
-        
         let swipeRight = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.respondToSwipeGesture(_:)))
         swipeRight.direction = UISwipeGestureRecognizer.Direction.right
         self.view.addGestureRecognizer(swipeRight)
         
+        // set status bar white
         if #available(iOS 13.0, *) {
             let statusBarHeight: CGFloat = view.window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
             
@@ -116,14 +120,45 @@ class ViewController: UIViewController,WKUIDelegate,WKNavigationDelegate,CLLocat
             let statusBar = UIApplication.shared.value(forKeyPath: "statusBarWindow.statusBar") as? UIView
             statusBar?.backgroundColor = UIColor.white
         }
+        
+//        if #available(iOS 11.0, *) {
+//            WKWebsiteDataStore.default().httpCookieStore.getAllCookies { (cookies) in
+//                for cookie in cookies{
+//                    print("@@@ cookie ==> \(cookie.name) : \(cookie.value)")
+//                    if cookie.name == "PHPSESSID" {
+//                        UserDefaults.standard.set(cookie.value, forKey:"PHPSESSID")
+//                        print("@@@ PHPSESSID 저장하기: \(cookie.value)")
+//
+//                    }
+//
+//                }
+//
+//            }
+//
+//        } else {
+//            // Fallback on earlier versions
+//        }
+//
+//        let cookie_domain = "https://semos.kr"
+//        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+//            let loadedSessid = UserDefaults.standard.value(forKey: "PHPSESSID") as! String?
+//            if let temp = loadedSessid{
+//                print("@@@ PHPSESSID 저장~~: \(temp)")
+//                // 이게 정상동작하는듯.. 자동로그인 됨
+//                let cookieString : String = "document.cookie='PHPSESSID=\(temp);path=/;domain=\(cookie_domain);'"
+//                webView.evaluateJavaScript(cookieString)
+//            }
+//
+//        }
+        
     }
     
-    
+    // set status bar letter black
     override var preferredStatusBarStyle: UIStatusBarStyle {
-        return .darkContent // Set status bar letter black
+        return .darkContent
     }
     
-    //alert 처리
+    // alert
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
                  initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void){
         print("alert")
@@ -131,8 +166,7 @@ class ViewController: UIViewController,WKUIDelegate,WKNavigationDelegate,CLLocat
         alertController.addAction(UIAlertAction(title: "확인", style: .default, handler: { (action) in completionHandler() }))
         self.present(alertController, animated: true, completion: nil) }
 
-//
-//
+
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if navigationAction.targetFrame == nil {
             let tmp = navigationAction.request.url?.absoluteString
@@ -166,5 +200,15 @@ class ViewController: UIViewController,WKUIDelegate,WKNavigationDelegate,CLLocat
 //        }
         }
         return nil
+    }
+    
+    // detact url change
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        print("URL Change 1:", webView.url?.absoluteString ?? "No value provided")
+        checkUrl()
+//        if object as AnyObject? === webView && keyPath == "URL" {
+//            print("URL Change 1:", webView.url?.absoluteString ?? "No value provided")
+//            checkUrl()
+//        }
     }
 }
