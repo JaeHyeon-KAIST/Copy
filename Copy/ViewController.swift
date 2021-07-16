@@ -151,6 +151,17 @@ class ViewController: UIViewController,WKUIDelegate,WKNavigationDelegate,CLLocat
 //
 //        }
         
+        let remove = """
+            function removeDummy() {
+                var elem = document.getElementsByTagName('aside')[0];
+                elem.parentNode.removeChild(elem);
+                return false;
+            }
+            removeDummy()
+        """
+        let script = WKUserScript(source: remove, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        webView.configuration.userContentController.addUserScript(script)
+        
     }
     
     // set status bar letter black
@@ -210,5 +221,7 @@ class ViewController: UIViewController,WKUIDelegate,WKNavigationDelegate,CLLocat
 //            print("URL Change 1:", webView.url?.absoluteString ?? "No value provided")
 //            checkUrl()
 //        }
+        
     }
+    
 }
